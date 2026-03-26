@@ -60,6 +60,17 @@
 - `chunks`
 - `page_results`
 - `warnings`
+- `metadata`
+
+`extracted_fields` 现在会尽量包含：
+
+- `name`
+- `canonical_code`
+- `value`
+- `unit`
+- `source_text`
+- `page`
+- `metadata`
 
 ## Inspect Document
 
@@ -93,6 +104,21 @@
 - `chunks`
 - `page_results`
 - `warnings`
+- `metadata`
+
+## Re-Extract Fields
+
+`POST /documents/{document_id}/extract-fields`
+
+对已经解析过的文档重新执行字段抽取，不重新跑 ingest。
+
+返回字段包括：
+
+- `document_id`
+- `source`
+- `extracted_fields`
+- `warnings`
+- `metadata`
 
 ## Search
 

@@ -2,8 +2,9 @@ from pathlib import Path
 
 from paddleocr_quant.ingestion import build_document_metadata
 from paddleocr_quant.models import DocumentMetadataIn
-from paddleocr_quant.parser import ParserRegistry
-from paddleocr_quant.pdf import PDFInspectionResult
+from paddleocr_quant.ocr import OCRAdapter, OCRAdapterResult
+from paddleocr_quant.parser import PDFDocumentParser, ParserRegistry
+from paddleocr_quant.pdf import PDFInspectionResult, PreparedPageImage, RasterizationResult
 from paddleocr_quant.storage import LocalObjectStore
 
 
@@ -121,3 +122,76 @@ def test_pdf_ocr_fallback_returns_warnings_without_crashing(tmp_path: Path, monk
     assert result.page_results
     assert any(page.status == "unavailable" for page in result.page_results)
     assert any("PaddleOCR is not installed" in warning for warning in result.warnings)
+
+
+def test_pdf_ocr_path_extracts_fields_from_page_text_and_raster_metadata(tmp_path: Path, monkeypatch) -> None:
+    class FakeRasterizationService:
+        def __init__(self) -> None:
+            self.rasterizer = type("Rasterizer", (), {"name": "fake-rasterizer"})()
+
+        def rasterize(self, pdf_path: str, output_dir: str, page_count_hint: int | None = None) -> RasterizationResult:
+            return RasterizationResult(
+                page_images=[
+                    PreparedPageImage(
+                        page_number=1,
+                        image_path=str(tmp_path / "page-0001.png"),
+                        metadata={"rasterizer": "fake-rasterizer", "dpi": 200},
+                    )
+                ],
+                metadata={"engine": "fake-rasterizer", "rendered_pages": 1},
+            )
+
+    class FakeOCRAdapter(OCRAdapter):
+        name = "fake-ocr"
+
+        def is_available(self) -> bool:
+            return True
+
+        def run(self, page_images: list[PreparedPageImage]) -> OCRAdapterResult:
+            return OCRAdapterResult(
+                adapter_name=self.name,
+                extracted_text="营业收入：12.5亿\nGross margin 44.5%",
+                page_results=[
+                    {
+                        "page_number": 1,
+                        "status": "success",
+                        "image_path": page_images[0].image_path,
+                        "extracted_text": "营业收入：12.5亿\nGross margin 44.5%",
+                        "warnings": [],
+                        "metadata": {"adapter": self.name, **page_images[0].metadata},
+                    }
+                ],
+            )
+
+    source = tmp_path / "ocr-report.pdf"
+    source.write_bytes(b"%PDF-1.4 scanned")
+    object_store = LocalObjectStore(tmp_path / "object_store")
+    metadata = build_document_metadata(
+        DocumentMetadataIn(
+            company_code="600519.SH",
+            company_name="Moutai",
+            market="CN_A",
+            fiscal_year=2025,
+            source_path=str(source),
+            source_fixture=None,
+        ),
+        object_store,
+    )
+
+    monkeypatch.setattr(
+        "paddleocr_quant.parser.inspect_pdf_text",
+        lambda _path: PDFInspectionResult(text_extractable=False, page_count=1),
+    )
+
+    parser = PDFDocumentParser(
+        object_store_root=object_store.root,
+        ocr_adapter=FakeOCRAdapter(),
+        rasterization_service=FakeRasterizationService(),
+    )
+    result = parser.parse(metadata)
+
+    assert result.strategy == "ocr"
+    assert result.metadata["rasterization"]["engine"] == "fake-rasterizer"
+    assert result.page_results[0].metadata["dpi"] == 200
+    assert any(field.canonical_code == "revenue" and field.page == 1 for field in result.extracted_fields)
+    assert any(field.canonical_code == "gross_margin" and field.unit == "%" for field in result.extracted_fields)

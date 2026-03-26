@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-import html
 import json
 import re
 from abc import ABC, abstractmethod
 from html.parser import HTMLParser
 from pathlib import Path
 
+from paddleocr_quant.extraction import extract_financial_fields
 from paddleocr_quant.models import (
     DocumentInspection,
     DocumentMetadata,
@@ -15,9 +15,12 @@ from paddleocr_quant.models import (
     ParsedField,
     TextChunk,
 )
-from paddleocr_quant.normalization import FIELD_ALIASES
 from paddleocr_quant.ocr import OCRAdapter, PaddleOCRAdapter
-from paddleocr_quant.pdf import PreparedPageImage, inspect_pdf_text, prepare_pdf_page_images
+from paddleocr_quant.pdf import (
+    PDFRasterizationService,
+    PreparedPageImage,
+    inspect_pdf_text,
+)
 
 
 class DocumentParser(ABC):
@@ -87,47 +90,6 @@ def _split_text(text: str, chunk_size: int = 500) -> list[str]:
     return chunks
 
 
-def _parse_numeric_token(token: str) -> float:
-    cleaned = token.replace(",", "").replace("%", "").strip()
-    if cleaned.startswith("(") and cleaned.endswith(")"):
-        cleaned = f"-{cleaned[1:-1]}"
-    return float(cleaned)
-
-
-def _extract_financial_aliases(text: str) -> list[ParsedField]:
-    fields: list[ParsedField] = []
-    seen: set[tuple[str, float]] = set()
-    aliases = sorted(FIELD_ALIASES.keys(), key=len, reverse=True)
-    for line in text.splitlines():
-        normalized_line = html.unescape(line).strip()
-        if not normalized_line:
-            continue
-        for alias in aliases:
-            match = re.search(
-                rf"(?i){re.escape(alias)}[\s:：\-]*([\(]?-?\d[\d,]*(?:\.\d+)?\)?%?)",
-                normalized_line,
-            )
-            if not match:
-                continue
-            value = _parse_numeric_token(match.group(1))
-            key = (alias.lower(), value)
-            if key in seen:
-                continue
-            seen.add(key)
-            unit = "%"
-            if "%" not in match.group(1):
-                unit = "USD" if "$" in normalized_line or "usd" in normalized_line.lower() else "CNY"
-            fields.append(
-                ParsedField(
-                    name=alias,
-                    value=value,
-                    unit=unit,
-                    source_text=normalized_line,
-                )
-            )
-    return fields
-
-
 class TextDocumentParser(DocumentParser):
     name = "text-heuristic"
 
@@ -144,6 +106,7 @@ class TextDocumentParser(DocumentParser):
 
     def parse(self, metadata: DocumentMetadata) -> ParseResult:
         text = self._read_text(metadata)
+        extracted_fields = extract_financial_fields(text, default_currency=_default_currency(metadata))
         chunks = [
             TextChunk(
                 document_id=metadata.document_id,
@@ -158,7 +121,7 @@ class TextDocumentParser(DocumentParser):
             parser_name=self.name,
             strategy="text",
             extracted_text=text,
-            extracted_fields=_extract_financial_aliases(text),
+            extracted_fields=extracted_fields,
             chunks=chunks,
         )
 
@@ -166,9 +129,15 @@ class TextDocumentParser(DocumentParser):
 class PDFDocumentParser(DocumentParser):
     name = "pdf-document"
 
-    def __init__(self, object_store_root: Path, ocr_adapter: OCRAdapter | None = None) -> None:
+    def __init__(
+        self,
+        object_store_root: Path,
+        ocr_adapter: OCRAdapter | None = None,
+        rasterization_service: PDFRasterizationService | None = None,
+    ) -> None:
         self.object_store_root = object_store_root
         self.ocr_adapter = ocr_adapter or PaddleOCRAdapter()
+        self.rasterization_service = rasterization_service or PDFRasterizationService()
 
     def inspect(self, metadata: DocumentMetadata) -> DocumentInspection:
         assert metadata.source_path
@@ -185,7 +154,10 @@ class PDFDocumentParser(DocumentParser):
             text_extractable=inspection.text_extractable,
             page_count=inspection.page_count,
             warnings=inspection.warnings,
-            metadata={"ocr_adapter": self.ocr_adapter.name},
+            metadata={
+                "ocr_adapter": self.ocr_adapter.name,
+                "rasterizer": self.rasterization_service.rasterizer.name,
+            },
         )
 
     def parse(self, metadata: DocumentMetadata) -> ParseResult:
@@ -223,9 +195,17 @@ class PDFDocumentParser(DocumentParser):
             parser_name=self.name,
             strategy="text",
             extracted_text=extracted_text,
-            extracted_fields=_extract_financial_aliases(extracted_text),
+            extracted_fields=extract_financial_fields(
+                extracted_text,
+                default_currency=_default_currency(metadata),
+            ),
             chunks=chunks,
             warnings=_dedupe_preserve_order(warnings),
+            metadata={
+                "inspection": pdf_inspection.model_dump(),
+                "ocr_adapter": self.ocr_adapter.name,
+                "rasterizer": self.rasterization_service.rasterizer.name,
+            },
         )
 
     def parse_via_ocr(
@@ -234,7 +214,7 @@ class PDFDocumentParser(DocumentParser):
         inspection: DocumentInspection | None = None,
     ) -> ParseResult:
         assert metadata.source_path
-        prep = prepare_pdf_page_images(
+        prep = self.rasterization_service.rasterize(
             metadata.source_path,
             self.object_store_root / "prepared_pages" / metadata.document_id,
             page_count_hint=inspection.page_count if inspection else None,
@@ -250,6 +230,15 @@ class PDFDocumentParser(DocumentParser):
             extracted_text = (
                 f"PDF document available at {metadata.source_path}. "
                 "OCR text is unavailable in the current environment."
+            )
+        extracted_fields = _extract_fields_from_pages(
+            page_results=ocr_result.page_results,
+            default_currency=_default_currency(metadata),
+        )
+        if not extracted_fields:
+            extracted_fields = extract_financial_fields(
+                extracted_text,
+                default_currency=_default_currency(metadata),
             )
         chunks = [
             TextChunk(
@@ -271,10 +260,14 @@ class PDFDocumentParser(DocumentParser):
             parser_name=self.name,
             strategy="ocr",
             extracted_text=extracted_text,
-            extracted_fields=_extract_financial_aliases(extracted_text),
+            extracted_fields=extracted_fields,
             chunks=chunks,
             page_results=page_results,
             warnings=_dedupe_preserve_order(warnings),
+            metadata={
+                "ocr_adapter": self.ocr_adapter.name,
+                "rasterization": prep.metadata,
+            },
         )
 
 
@@ -291,6 +284,34 @@ def _placeholder_page_results(page_images: list[PreparedPageImage], adapter_name
             )
         )
     return results
+
+
+def _extract_fields_from_pages(
+    page_results: list[OCRPageResult],
+    default_currency: str,
+) -> list[ParsedField]:
+    fields: list[ParsedField] = []
+    seen: set[tuple[str | None, int | None, float, str]] = set()
+    for page in page_results:
+        for field in extract_financial_fields(
+            page.extracted_text,
+            page_number=page.page_number,
+            default_currency=default_currency,
+        ):
+            key = (field.canonical_code, field.page, round(field.value, 6), field.unit)
+            if key in seen:
+                continue
+            seen.add(key)
+            fields.append(field)
+    return fields
+
+
+def _default_currency(metadata: DocumentMetadata) -> str:
+    if metadata.market == "US":
+        return "USD"
+    if metadata.market == "HK":
+        return "HKD"
+    return "CNY"
 
 
 def _dedupe_preserve_order(items: list[str]) -> list[str]:

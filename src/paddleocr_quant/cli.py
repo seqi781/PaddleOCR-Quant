@@ -8,7 +8,7 @@ import typer
 
 from paddleocr_quant.bootstrap import build_container
 from paddleocr_quant.ingestion import build_document_metadata
-from paddleocr_quant.models import CompanyMetricRecord, DocumentMetadataIn, QARequest
+from paddleocr_quant.models import CompanyMetricRecord, DocumentMetadataIn, FieldExtractionResult, QARequest
 from paddleocr_quant.normalization import normalize_fields
 from paddleocr_quant.retrieval import build_grounded_answer, query_from_question
 from paddleocr_quant.scoring import score_company
@@ -120,6 +120,42 @@ def parse_ocr_command(document_id: str) -> None:
         )
     )
     typer.echo(json.dumps(result.model_dump(mode="json"), ensure_ascii=False, indent=2))
+
+
+@app.command("extract-fields")
+def extract_fields_command(
+    path: Path,
+    market: str = "CN_A",
+    language: str = "zh-CN",
+) -> None:
+    container = build_container(get_settings())
+    payload = DocumentMetadataIn(
+        company_code="EXTRACT",
+        company_name="Extraction Only",
+        market=market,
+        fiscal_year=datetime.utcnow().year,
+        report_type="extraction_only",
+        language=language,
+        source_path=str(path),
+        source_fixture=None,
+    )
+    try:
+        metadata = build_document_metadata(payload, container.object_store)
+    except (FileNotFoundError, ValueError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    result = container.parser_registry.parse(metadata)
+    response = FieldExtractionResult(
+        document_id=metadata.document_id,
+        source=str(path),
+        extracted_fields=result.extracted_fields,
+        warnings=result.warnings,
+        metadata={
+            "parser_name": result.parser_name,
+            "strategy": result.strategy,
+            "parse_metadata": result.metadata,
+        },
+    )
+    typer.echo(json.dumps(response.model_dump(mode="json"), ensure_ascii=False, indent=2))
 
 
 @app.command("search")

@@ -5,6 +5,7 @@ from datetime import datetime
 from fastapi import Depends, FastAPI, HTTPException
 
 from paddleocr_quant.bootstrap import Container, build_container
+from paddleocr_quant.extraction import extract_financial_fields
 from paddleocr_quant.ingestion import build_document_metadata
 from paddleocr_quant.models import (
     CompareRequest,
@@ -13,7 +14,9 @@ from paddleocr_quant.models import (
     DocumentInspection,
     DocumentMetadata,
     DocumentMetadataIn,
+    FieldExtractionResult,
     ParseResult,
+    ParsedField,
     QARequest,
     QAResponse,
     SampleFiling,
@@ -90,6 +93,23 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         result = dep.parser_registry.parse_ocr(metadata)
         _persist_parse_result(dep, metadata, result)
         return result
+
+    @app.post("/documents/{document_id}/extract-fields", response_model=FieldExtractionResult)
+    def extract_document_fields(document_id: str, dep: Container = Depends(get_container)) -> FieldExtractionResult:
+        metadata = dep.repo.get_document(document_id)
+        if not metadata:
+            raise HTTPException(status_code=404, detail="Document not found")
+        parsed = dep.repo.get_parse_result(document_id)
+        if not parsed:
+            raise HTTPException(status_code=404, detail="Parsed document not found")
+        fields = _extract_fields_from_existing_parse(parsed, metadata.market)
+        return FieldExtractionResult(
+            document_id=document_id,
+            source="parsed_document",
+            extracted_fields=fields,
+            warnings=parsed.warnings,
+            metadata={"parser_name": parsed.parser_name, "strategy": parsed.strategy},
+        )
 
     @app.get("/documents/{document_id}/search", response_model=SearchResult)
     def search_document(
@@ -180,6 +200,27 @@ def _persist_parse_result(dep: Container, metadata: DocumentMetadata, result: Pa
         normalized_fields=normalized,
     )
     dep.repo.upsert_company_metric(record)
+
+
+def _extract_fields_from_existing_parse(parsed: ParseResult, market: str) -> list[ParsedField]:
+    default_currency = "USD" if market == "US" else "HKD" if market == "HK" else "CNY"
+    if parsed.page_results:
+        fields = []
+        seen: set[tuple[str | None, int | None, float, str]] = set()
+        for page in parsed.page_results:
+            for field in extract_financial_fields(
+                page.extracted_text,
+                page_number=page.page_number,
+                default_currency=default_currency,
+            ):
+                key = (field.canonical_code, field.page, round(field.value, 6), field.unit)
+                if key in seen:
+                    continue
+                seen.add(key)
+                fields.append(field)
+        if fields:
+            return fields
+    return extract_financial_fields(parsed.extracted_text, default_currency=default_currency)
 
 
 app = create_app()

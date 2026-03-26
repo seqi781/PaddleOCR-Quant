@@ -84,6 +84,7 @@ class SQLiteRepository:
                     extracted_fields_json TEXT NOT NULL,
                     page_results_json TEXT NOT NULL DEFAULT '[]',
                     warnings_json TEXT NOT NULL,
+                    metadata_json TEXT NOT NULL DEFAULT '{}',
                     parsed_at TEXT NOT NULL
                 )
                 """
@@ -122,6 +123,7 @@ class SQLiteRepository:
         self._ensure_column("documents", "parsed_at", "TEXT")
         self._ensure_column("parsed_documents", "strategy", "TEXT NOT NULL DEFAULT 'text'")
         self._ensure_column("parsed_documents", "page_results_json", "TEXT NOT NULL DEFAULT '[]'")
+        self._ensure_column("parsed_documents", "metadata_json", "TEXT NOT NULL DEFAULT '{}'")
 
     def insert_document(self, metadata: DocumentMetadata) -> DocumentMetadata:
         with self._connect() as conn:
@@ -192,8 +194,8 @@ class SQLiteRepository:
                 """
                 INSERT INTO parsed_documents (
                     document_id, parser_name, strategy, extracted_text, extracted_fields_json,
-                    page_results_json, warnings_json, parsed_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                    page_results_json, warnings_json, metadata_json, parsed_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
                 ON CONFLICT(document_id) DO UPDATE SET
                     parser_name=excluded.parser_name,
                     strategy=excluded.strategy,
@@ -201,6 +203,7 @@ class SQLiteRepository:
                     extracted_fields_json=excluded.extracted_fields_json,
                     page_results_json=excluded.page_results_json,
                     warnings_json=excluded.warnings_json,
+                    metadata_json=excluded.metadata_json,
                     parsed_at=CURRENT_TIMESTAMP
                 """,
                 (
@@ -211,6 +214,7 @@ class SQLiteRepository:
                     json.dumps([field.model_dump() for field in result.extracted_fields], ensure_ascii=False),
                     json.dumps([page.model_dump() for page in result.page_results], ensure_ascii=False),
                     json.dumps(result.warnings, ensure_ascii=False),
+                    json.dumps(result.metadata, ensure_ascii=False),
                 ),
             )
             conn.execute("DELETE FROM document_chunks WHERE document_id = ?", (result.document_id,))
@@ -273,6 +277,27 @@ class SQLiteRepository:
             total_hits=len(matches),
             chunks=ranked[:limit],
         )
+
+    def get_parse_result(self, document_id: str) -> ParseResult | None:
+        with self._connect() as conn:
+            row = conn.execute(
+                """
+                SELECT * FROM parsed_documents
+                WHERE document_id = ?
+                """,
+                (document_id,),
+            ).fetchone()
+        if not row:
+            return None
+        chunks = self.list_document_chunks(document_id)
+        payload = dict(row)
+        payload["extracted_fields"] = json.loads(payload.pop("extracted_fields_json"))
+        payload["page_results"] = json.loads(payload.pop("page_results_json"))
+        payload["warnings"] = json.loads(payload.pop("warnings_json"))
+        payload["metadata"] = json.loads(payload.pop("metadata_json"))
+        payload["chunks"] = [chunk.model_dump() for chunk in chunks]
+        payload.pop("parsed_at", None)
+        return ParseResult.model_validate(payload)
 
     def upsert_company_metric(self, record: CompanyMetricRecord) -> CompanyMetricRecord:
         with self._connect() as conn:

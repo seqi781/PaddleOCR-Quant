@@ -16,14 +16,19 @@
 - OCR 适配层
   - `PaddleOCRAdapter`：仅在环境中已安装 PaddleOCR 时调用真实 OCR
   - 若 PaddleOCR 或 PDF 转图工具不可用，返回结构化 warning 和 page-level placeholder，不崩溃
-- PDF 页面图像准备占位层
+- PDF rasterization service
   - 可选使用 `pdf2image`
-  - 不强制依赖 Poppler；当前环境不可转图时返回 warning
+  - 显式记录 `pdf2image` / Poppler 缺失 warning
+  - 在 parse/page 结果中保留 rasterization metadata
+- 可复用财务字段抽取模块
+  - 支持 revenue、net profit、operating cash flow、free cash flow、gross margin、ROE、debt ratio、revenue growth
+  - 支持轻量倍数/单位：`%`、`亿`、`万`、`million`、`billion`、`RMB`、`USD`
+  - 返回 `canonical_code`、`source_text`、页码和解析元数据
 - 文本 chunk 持久化与 SQLite 检索占位索引
 - 关键词搜索与 grounded QA 模板回答
 - CN/HK/US 样例 crawler skeleton
 - 财务字段标准化与规则型评分
-- 覆盖 inspect / parse / OCR fallback / search / QA 的测试
+- 覆盖 inspect / parse / OCR fallback / extraction / search / QA 的测试
 
 ## OCR 状态说明
 
@@ -32,7 +37,9 @@
 - 如果安装了 PaddleOCR，`pdf-document` 的 OCR 路径会尝试调用它
 - 如果 PDF 可抽取文本，默认优先走文本抽取路径，不强制 OCR
 - 如果 PDF 不可抽取文本，会路由到 OCR adapter
-- 如果 PaddleOCR、`pypdf`、`pdf2image` 或 Poppler 不可用，接口仍会返回可解析的 warning、page-level 占位结果和降级文本
+- 如果 PaddleOCR、`pypdf`、`pdf2image` 或 Poppler 不可用，接口仍会返回可解析的 warning、page-level 占位结果、rasterization metadata 和降级文本
+
+字段抽取细节见 [docs/extraction.md](/Users/seqi/.openclaw/workspace/projects/PaddleOCR-Quant/docs/extraction.md)。
 
 Windows + NVIDIA 推荐环境、CUDA 说明、可选依赖建议见 [docs/ocr.md](/Users/seqi/.openclaw/workspace/projects/PaddleOCR-Quant/docs/ocr.md)。
 
@@ -46,6 +53,7 @@ Windows + NVIDIA 推荐环境、CUDA 说明、可选依赖建议见 [docs/ocr.md
 - 向量检索、RAG 编排、LLM 推理服务
 - XBRL、表格恢复、复杂多页版面分析
 - 行情、估值、行业基准、币种统一服务
+- 生产级字段抽取质量与复杂表格理解
 
 这些差距也在 [docs/roadmap.md](/Users/seqi/.openclaw/workspace/projects/PaddleOCR-Quant/docs/roadmap.md) 中明确写出。
 
@@ -127,6 +135,12 @@ paddleocr-quant inspect doc-xxxxxxxxxxxx
 paddleocr-quant parse-ocr doc-xxxxxxxxxxxx
 ```
 
+直接从本地文件抽取字段：
+
+```bash
+paddleocr-quant extract-fields ./sample_report.pdf --market CN_A
+```
+
 搜索：
 
 ```bash
@@ -152,6 +166,7 @@ paddleocr-quant sample-filings US AAPL
 - `GET /documents/{document_id}/inspect`
 - `POST /documents/{document_id}/parse`
 - `POST /documents/{document_id}/parse/ocr`
+- `POST /documents/{document_id}/extract-fields`
 - `GET /documents/{document_id}/search?q=...`
 - `POST /documents/{document_id}/qa`
 - `GET /filings/sample?market=US&ticker=AAPL`
@@ -179,7 +194,7 @@ PDF 路径现在会先做策略检测：
 - 若环境中已有 `pypdf` 且文本可抽取，默认走 text extraction
 - 若文本不可抽取，默认走 OCR adapter
 - 若显式调用 OCR parse，则直接走 OCR adapter
-- 若缺少 `pypdf`、PaddleOCR 或页面转图工具，系统不会崩溃，而是返回 warning 和 placeholder page 结果
+- 若缺少 `pypdf`、PaddleOCR、`pdf2image` 或 Poppler，系统不会崩溃，而是返回 warning、rasterization metadata 和 placeholder page 结果
 
 这使当前仓库在轻量环境下仍可运行，同时也为后续 Windows + NVIDIA + PaddleOCR 部署保留了真实接入点。
 
@@ -187,5 +202,6 @@ PDF 路径现在会先做策略检测：
 
 - API 说明：[docs/api.md](/Users/seqi/.openclaw/workspace/projects/PaddleOCR-Quant/docs/api.md)
 - OCR 说明：[docs/ocr.md](/Users/seqi/.openclaw/workspace/projects/PaddleOCR-Quant/docs/ocr.md)
+- 字段抽取说明：[docs/extraction.md](/Users/seqi/.openclaw/workspace/projects/PaddleOCR-Quant/docs/extraction.md)
 - 路线图：[docs/roadmap.md](/Users/seqi/.openclaw/workspace/projects/PaddleOCR-Quant/docs/roadmap.md)
 - 架构说明：[docs/architecture.md](/Users/seqi/.openclaw/workspace/projects/PaddleOCR-Quant/docs/architecture.md)

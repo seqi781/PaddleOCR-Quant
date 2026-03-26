@@ -6,6 +6,7 @@
 
 - 已实现 `OCRAdapter` 抽象
 - 已实现 `PaddleOCRAdapter`
+- 已实现独立的 PDF rasterization service
 - 如果环境里安装了 PaddleOCR，代码会尝试调用真实 OCR
 - 如果 PaddleOCR 不存在，返回结构化 warning 和 page-level placeholder，不会因为缺依赖而崩溃
 - PDF 现在会先做策略检测：优先文本抽取，其次 OCR
@@ -40,11 +41,12 @@
 
 ### 3. 页面图像准备层
 
-当前增加了 PDF 页面图像准备工具，但保持轻量：
+当前增加了 PDF 页面 rasterization service，但保持轻量：
 
 - 优先尝试可选依赖 `pdf2image`
-- 不强制要求 Poppler
-- 如果当前机器无法把 PDF 渲染成图片，会返回 warning 和 page placeholder
+- 依赖 Poppler 的 `pdftoppm`
+- 如果当前机器无法把 PDF 渲染成图片，会返回明确 warning 和 page placeholder
+- page 结果和 parse 结果里都会保留 rasterization metadata
 
 这意味着当前代码已经为“真实 OCR 需要页面图片”的链路预留了位置，但不会把重依赖变成必选安装。
 
@@ -60,6 +62,16 @@
 - `metadata`
 
 即使 OCR 没有真正执行，也会保留 page-level placeholder，方便后续切换到真正部署环境。
+
+### 5. OCR 文本字段抽取
+
+当 OCR 成功返回页面文本时，系统会直接对 OCR 文本做字段抽取：
+
+- 复用统一的 financial extraction 模块
+- 尽量把 `page` 页码写回字段结果
+- 返回 `canonical_code`、`source_text` 和解析元数据
+
+这依然是启发式抽取，不是生产级表格理解，但对真实财报中的关键字段已经比旧版内嵌正则更实用。
 
 ## Windows + NVIDIA 推荐环境
 
@@ -121,7 +133,7 @@ PaddleOCR 是否可用，关键不只是 `pip install paddleocr`，更在于：
 - 缺少 `pypdf`
   - 无法判断 PDF 是否可抽取文本，会返回 warning
 - 缺少 `pdf2image` 或 Poppler
-  - 无法生成页面图片，会返回 warning 和 placeholder page
+  - 无法生成页面图片，会返回明确 warning、rasterization metadata 和 placeholder page
 - 缺少 PaddleOCR
   - 无法执行真实 OCR，会返回 warning 和 `unavailable` 状态的 page result
 

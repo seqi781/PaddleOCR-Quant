@@ -43,11 +43,13 @@ class DocumentMetadata(DocumentMetadataIn):
 
 class ParsedField(BaseModel):
     name: str
+    canonical_code: str | None = None
     value: float
     unit: str = "CNY"
     period: str = "FY"
     source_text: str
     page: int | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 class TextChunk(BaseModel):
@@ -90,6 +92,7 @@ class ParseResult(BaseModel):
     chunks: list[TextChunk]
     page_results: list[OCRPageResult] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 class NormalizedField(BaseModel):
@@ -170,3 +173,11 @@ class SampleFiling(BaseModel):
     filing_date: str
     source_url: str
     local_fixture: str
+
+
+class FieldExtractionResult(BaseModel):
+    document_id: str | None = None
+    source: str
+    extracted_fields: list[ParsedField]
+    warnings: list[str] = Field(default_factory=list)
+    metadata: dict[str, Any] = Field(default_factory=dict)

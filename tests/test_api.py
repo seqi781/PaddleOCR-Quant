@@ -21,7 +21,7 @@ def test_documents_and_compare(client, test_app):
 def test_local_ingest_parse_search_and_qa(client, tmp_path):
     source = tmp_path / "financials.txt"
     source.write_text(
-        "Revenue 1200\nNet Profit 300\nOperating cash flow 260\nRevenue growth 12%\n",
+        "单位：亿元人民币\nRevenue 1200 million USD\n营业收入 12.5\nNet Profit 300 million USD\nOperating cash flow 260\nRevenue growth 12%\nFree cash flow RMB 1.6 billion\n",
         encoding="utf-8",
     )
 
@@ -51,7 +51,15 @@ def test_local_ingest_parse_search_and_qa(client, tmp_path):
     parsed = parse_response.json()
     assert parsed["parser_name"] == "text-heuristic"
     assert parsed["chunks"]
-    assert any(field["name"].lower() == "revenue" for field in parsed["extracted_fields"])
+    assert any(field["canonical_code"] == "revenue" for field in parsed["extracted_fields"])
+    assert any(field["canonical_code"] == "free_cash_flow" for field in parsed["extracted_fields"])
+    assert any(field["source_text"] for field in parsed["extracted_fields"])
+
+    extract_response = client.post(f"/documents/{document_id}/extract-fields")
+    assert extract_response.status_code == 200
+    extracted = extract_response.json()
+    assert extracted["document_id"] == document_id
+    assert any(field["canonical_code"] == "net_profit" for field in extracted["extracted_fields"])
 
     search_response = client.get(f"/documents/{document_id}/search", params={"q": "revenue"})
     assert search_response.status_code == 200
