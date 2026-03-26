@@ -28,8 +28,15 @@ PaddleOCR-Quant 当前是一个单机、本地、轻量 MVP。目标不是一次
   - 解析 `txt/md/html`
   - 提取纯文本与简单财务别名
 - `PDFDocumentParser`
-  - 有 `pypdf` 时尝试抽取文本
-  - 无依赖时降级返回 warning
+  - 先做 PDF 文本可抽取性检测
+  - 可抽取时走文本路径
+  - 不可抽取时走 OCR 路径
+- `OCRAdapter`
+  - 当前实现 `PaddleOCRAdapter`
+  - 依赖缺失时返回结构化 warning 和 page placeholder
+- `pdf.py`
+  - 页面图像准备占位层
+  - 不强制引入 Poppler 或重依赖
 
 ### 存储层
 
@@ -61,7 +68,7 @@ PaddleOCR-Quant 当前是一个单机、本地、轻量 MVP。目标不是一次
 |---|---|---|
 | 文档采集 | 交易所 crawler / 调度系统 | 本地文件 ingest + sample filing stubs |
 | 原始存储 | S3 / MinIO / 数据湖 | 本地目录对象存储 |
-| OCR / 解析 | PaddleOCR / PDF pipeline | mock parser + text parser + PDF fallback |
+| OCR / 解析 | PaddleOCR / PDF pipeline | mock parser + text parser + PDF strategy detection + optional PaddleOCR adapter |
 | 元数据与事实 | PostgreSQL / OLAP | SQLite |
 | 检索 | FTS / ES / 向量库 | SQLite chunk records + 关键词匹配 |
 | 问答 | RAG + LLM | grounded response template |

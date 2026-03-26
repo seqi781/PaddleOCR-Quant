@@ -70,10 +70,43 @@ def parse_command(document_id: str) -> None:
     metadata = container.repo.get_document(document_id)
     if not metadata:
         raise typer.BadParameter(f"Document not found: {document_id}")
-    parser = container.parser_registry.select(metadata)
-    result = parser.parse(metadata)
+    result = container.parser_registry.parse(metadata)
     container.repo.upsert_parse_result(result)
-    container.repo.update_document_parse_status(document_id, parser.name, datetime.utcnow().isoformat())
+    container.repo.update_document_parse_status(document_id, result.parser_name, datetime.utcnow().isoformat())
+    container.object_store.put_json(f"parsed/{document_id}.json", result.model_dump(mode="json"))
+    normalized = normalize_fields(result.extracted_fields)
+    container.repo.upsert_company_metric(
+        CompanyMetricRecord(
+            company_code=metadata.company_code,
+            company_name=metadata.company_name,
+            market=metadata.market,
+            fiscal_year=metadata.fiscal_year,
+            currency="USD" if metadata.market == "US" else "CNY",
+            normalized_fields=normalized,
+        )
+    )
+    typer.echo(json.dumps(result.model_dump(mode="json"), ensure_ascii=False, indent=2))
+
+
+@app.command("inspect")
+def inspect_command(document_id: str) -> None:
+    container = build_container(get_settings())
+    metadata = container.repo.get_document(document_id)
+    if not metadata:
+        raise typer.BadParameter(f"Document not found: {document_id}")
+    inspection = container.parser_registry.inspect(metadata)
+    typer.echo(json.dumps(inspection.model_dump(mode="json"), ensure_ascii=False, indent=2))
+
+
+@app.command("parse-ocr")
+def parse_ocr_command(document_id: str) -> None:
+    container = build_container(get_settings())
+    metadata = container.repo.get_document(document_id)
+    if not metadata:
+        raise typer.BadParameter(f"Document not found: {document_id}")
+    result = container.parser_registry.parse_ocr(metadata)
+    container.repo.upsert_parse_result(result)
+    container.repo.update_document_parse_status(document_id, result.parser_name, datetime.utcnow().isoformat())
     container.object_store.put_json(f"parsed/{document_id}.json", result.model_dump(mode="json"))
     normalized = normalize_fields(result.extracted_fields)
     container.repo.upsert_company_metric(

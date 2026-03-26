@@ -23,7 +23,7 @@ def build_container(settings: Settings) -> Container:
     fixtures_dir = Path(__file__).resolve().parents[2] / "fixtures"
     repo = SQLiteRepository(settings.db_path)
     object_store = LocalObjectStore(settings.object_store_root)
-    parser_registry = ParserRegistry(fixtures_dir=fixtures_dir)
+    parser_registry = ParserRegistry(fixtures_dir=fixtures_dir, object_store_root=object_store.root)
     filing_sources = FilingSourceRegistry()
     return Container(
         settings=settings,

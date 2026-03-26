@@ -75,3 +75,44 @@ def test_sample_filings_endpoint(client):
     payload = response.json()
     assert payload[0]["ticker"] == "AAPL"
     assert payload[0]["local_fixture"].endswith("AAPL_2025_10K.json")
+
+
+def test_document_inspection_and_explicit_ocr_parse(client, tmp_path, monkeypatch):
+    from paddleocr_quant.pdf import PDFInspectionResult
+
+    source = tmp_path / "scanned.pdf"
+    source.write_bytes(b"%PDF-1.4 scanned")
+
+    ingest_response = client.post(
+        "/documents",
+        json={
+            "company_code": "600519.SH",
+            "company_name": "Moutai",
+            "market": "CN_A",
+            "fiscal_year": 2025,
+            "report_type": "annual_report",
+            "language": "zh-CN",
+            "source_path": str(source),
+            "source_fixture": None,
+        },
+    )
+    assert ingest_response.status_code == 200
+    document_id = ingest_response.json()["document_id"]
+
+    monkeypatch.setattr(
+        "paddleocr_quant.parser.inspect_pdf_text",
+        lambda _path: PDFInspectionResult(text_extractable=False, page_count=1),
+    )
+
+    inspect_response = client.get(f"/documents/{document_id}/inspect")
+    assert inspect_response.status_code == 200
+    inspection = inspect_response.json()
+    assert inspection["recommended_strategy"] == "ocr"
+    assert inspection["page_count"] == 1
+
+    parse_response = client.post(f"/documents/{document_id}/parse/ocr")
+    assert parse_response.status_code == 200
+    parsed = parse_response.json()
+    assert parsed["strategy"] == "ocr"
+    assert parsed["page_results"]
+    assert any("PaddleOCR is not installed" in warning for warning in parsed["warnings"])

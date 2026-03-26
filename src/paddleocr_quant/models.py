@@ -9,6 +9,8 @@ from pydantic import BaseModel, Field
 
 MarketCode = Literal["CN_A", "HK", "US"]
 SourceType = Literal["fixture", "local"]
+ParseStrategy = Literal["text", "ocr", "mock"]
+OCRPageStatus = Literal["not_run", "success", "warning", "unavailable"]
 
 
 class DocumentMetadataIn(BaseModel):
@@ -58,12 +60,35 @@ class TextChunk(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
+class OCRPageResult(BaseModel):
+    page_number: int
+    status: OCRPageStatus = "not_run"
+    image_path: str | None = None
+    extracted_text: str = ""
+    warnings: list[str] = Field(default_factory=list)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class DocumentInspection(BaseModel):
+    document_id: str
+    parser_name: str
+    recommended_strategy: ParseStrategy
+    detected_extension: str | None = None
+    source_type: SourceType
+    text_extractable: bool | None = None
+    page_count: int | None = None
+    warnings: list[str] = Field(default_factory=list)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
 class ParseResult(BaseModel):
     document_id: str
     parser_name: str
+    strategy: ParseStrategy = "text"
     extracted_text: str = ""
     extracted_fields: list[ParsedField]
     chunks: list[TextChunk]
+    page_results: list[OCRPageResult] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
 
 

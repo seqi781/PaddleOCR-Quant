@@ -10,6 +10,7 @@ from paddleocr_quant.models import (
     CompareRequest,
     CompareResult,
     CompanyMetricRecord,
+    DocumentInspection,
     DocumentMetadata,
     DocumentMetadataIn,
     ParseResult,
@@ -70,25 +71,24 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         metadata = dep.repo.get_document(document_id)
         if not metadata:
             raise HTTPException(status_code=404, detail="Document not found")
-        parser = dep.parser_registry.select(metadata)
-        result = parser.parse(metadata)
-        parsed_at = datetime.utcnow().isoformat()
-        dep.repo.upsert_parse_result(result)
-        dep.repo.update_document_parse_status(document_id, parser.name, parsed_at)
-        dep.object_store.put_json(
-            f"parsed/{document_id}.json",
-            result.model_dump(mode="json"),
-        )
-        normalized = normalize_fields(result.extracted_fields)
-        record = CompanyMetricRecord(
-            company_code=metadata.company_code,
-            company_name=metadata.company_name,
-            market=metadata.market,
-            fiscal_year=metadata.fiscal_year,
-            currency="USD" if metadata.market == "US" else "CNY",
-            normalized_fields=normalized,
-        )
-        dep.repo.upsert_company_metric(record)
+        result = dep.parser_registry.parse(metadata)
+        _persist_parse_result(dep, metadata, result)
+        return result
+
+    @app.get("/documents/{document_id}/inspect", response_model=DocumentInspection)
+    def inspect_document(document_id: str, dep: Container = Depends(get_container)) -> DocumentInspection:
+        metadata = dep.repo.get_document(document_id)
+        if not metadata:
+            raise HTTPException(status_code=404, detail="Document not found")
+        return dep.parser_registry.inspect(metadata)
+
+    @app.post("/documents/{document_id}/parse/ocr", response_model=ParseResult)
+    def parse_document_via_ocr(document_id: str, dep: Container = Depends(get_container)) -> ParseResult:
+        metadata = dep.repo.get_document(document_id)
+        if not metadata:
+            raise HTTPException(status_code=404, detail="Document not found")
+        result = dep.parser_registry.parse_ocr(metadata)
+        _persist_parse_result(dep, metadata, result)
         return result
 
     @app.get("/documents/{document_id}/search", response_model=SearchResult)
@@ -160,6 +160,26 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         return CompareResult(fiscal_year=payload.fiscal_year, scores=ranked)
 
     return app
+
+
+def _persist_parse_result(dep: Container, metadata: DocumentMetadata, result: ParseResult) -> None:
+    parsed_at = datetime.utcnow().isoformat()
+    dep.repo.upsert_parse_result(result)
+    dep.repo.update_document_parse_status(metadata.document_id, result.parser_name, parsed_at)
+    dep.object_store.put_json(
+        f"parsed/{metadata.document_id}.json",
+        result.model_dump(mode="json"),
+    )
+    normalized = normalize_fields(result.extracted_fields)
+    record = CompanyMetricRecord(
+        company_code=metadata.company_code,
+        company_name=metadata.company_name,
+        market=metadata.market,
+        fiscal_year=metadata.fiscal_year,
+        currency="USD" if metadata.market == "US" else "CNY",
+        normalized_fields=normalized,
+    )
+    dep.repo.upsert_company_metric(record)
 
 
 app = create_app()

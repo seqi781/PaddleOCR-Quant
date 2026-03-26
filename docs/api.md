@@ -47,14 +47,51 @@
 
 - fixture 文档 -> `mock-paddleocr`
 - `.txt` / `.md` / `.html` -> `text-heuristic`
-- `.pdf` -> `pdf-fallback`
+- `.pdf` -> `pdf-document`
+  - 如果 PDF 文本可抽取，默认走 `text`
+  - 如果文本不可抽取，默认走 `ocr`
 
 返回字段包括：
 
 - `parser_name`
+- `strategy`
 - `extracted_text`
 - `extracted_fields`
 - `chunks`
+- `page_results`
+- `warnings`
+
+## Inspect Document
+
+`GET /documents/{document_id}/inspect`
+
+返回当前文档的推荐解析策略：
+
+- `mock`
+- `text`
+- `ocr`
+
+额外返回：
+
+- `text_extractable`
+- `page_count`
+- `warnings`
+- `metadata`
+
+## Parse Document Via OCR
+
+`POST /documents/{document_id}/parse/ocr`
+
+显式强制走 OCR 路径。当前主要用于 PDF：
+
+返回字段包括：
+
+- `parser_name`
+- `strategy`
+- `extracted_text`
+- `extracted_fields`
+- `chunks`
+- `page_results`
 - `warnings`
 
 ## Search

@@ -79,8 +79,10 @@ class SQLiteRepository:
                 CREATE TABLE IF NOT EXISTS parsed_documents (
                     document_id TEXT PRIMARY KEY,
                     parser_name TEXT NOT NULL,
+                    strategy TEXT NOT NULL DEFAULT 'text',
                     extracted_text TEXT NOT NULL,
                     extracted_fields_json TEXT NOT NULL,
+                    page_results_json TEXT NOT NULL DEFAULT '[]',
                     warnings_json TEXT NOT NULL,
                     parsed_at TEXT NOT NULL
                 )
@@ -118,6 +120,8 @@ class SQLiteRepository:
         self._ensure_column("documents", "mime_type", "TEXT")
         self._ensure_column("documents", "parser_name", "TEXT")
         self._ensure_column("documents", "parsed_at", "TEXT")
+        self._ensure_column("parsed_documents", "strategy", "TEXT NOT NULL DEFAULT 'text'")
+        self._ensure_column("parsed_documents", "page_results_json", "TEXT NOT NULL DEFAULT '[]'")
 
     def insert_document(self, metadata: DocumentMetadata) -> DocumentMetadata:
         with self._connect() as conn:
@@ -187,20 +191,25 @@ class SQLiteRepository:
             conn.execute(
                 """
                 INSERT INTO parsed_documents (
-                    document_id, parser_name, extracted_text, extracted_fields_json, warnings_json, parsed_at
-                ) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                    document_id, parser_name, strategy, extracted_text, extracted_fields_json,
+                    page_results_json, warnings_json, parsed_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
                 ON CONFLICT(document_id) DO UPDATE SET
                     parser_name=excluded.parser_name,
+                    strategy=excluded.strategy,
                     extracted_text=excluded.extracted_text,
                     extracted_fields_json=excluded.extracted_fields_json,
+                    page_results_json=excluded.page_results_json,
                     warnings_json=excluded.warnings_json,
                     parsed_at=CURRENT_TIMESTAMP
                 """,
                 (
                     result.document_id,
                     result.parser_name,
+                    result.strategy,
                     result.extracted_text,
                     json.dumps([field.model_dump() for field in result.extracted_fields], ensure_ascii=False),
+                    json.dumps([page.model_dump() for page in result.page_results], ensure_ascii=False),
                     json.dumps(result.warnings, ensure_ascii=False),
                 ),
             )
