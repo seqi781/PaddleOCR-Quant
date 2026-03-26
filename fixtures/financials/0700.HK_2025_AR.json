@@ -1,0 +1,10 @@
+[
+  {"company_id":"TENCENT","report_period":"2025","statement_type":"income","standard_item_code":"REVENUE","raw_item_name":"Revenue","item_value":682100000000.0,"currency":"CNY","source_document_id":"0700.HK_2025_AR"},
+  {"company_id":"TENCENT","report_period":"2025","statement_type":"income","standard_item_code":"NP_PARENT","raw_item_name":"Net profit attributable to shareholders","item_value":198600000000.0,"currency":"CNY","source_document_id":"0700.HK_2025_AR"},
+  {"company_id":"TENCENT","report_period":"2025","statement_type":"cashflow","standard_item_code":"OCF_NET","raw_item_name":"Operating cash flow","item_value":239800000000.0,"currency":"CNY","source_document_id":"0700.HK_2025_AR"},
+  {"company_id":"TENCENT","report_period":"2025","statement_type":"cashflow","standard_item_code":"FCF","raw_item_name":"Free cash flow","item_value":211000000000.0,"currency":"CNY","source_document_id":"0700.HK_2025_AR"},
+  {"company_id":"TENCENT","report_period":"2025","statement_type":"ratio","standard_item_code":"GROSS_MARGIN","raw_item_name":"Gross margin","item_value":53.1,"currency":"PCT","source_document_id":"0700.HK_2025_AR"},
+  {"company_id":"TENCENT","report_period":"2025","statement_type":"ratio","standard_item_code":"ASSET_LIAB_RATIO","raw_item_name":"liability to asset ratio","item_value":43.0,"currency":"PCT","source_document_id":"0700.HK_2025_AR"},
+  {"company_id":"TENCENT","report_period":"2025","statement_type":"ratio","standard_item_code":"ROE","raw_item_name":"ROE","item_value":24.2,"currency":"PCT","source_document_id":"0700.HK_2025_AR"},
+  {"company_id":"TENCENT","report_period":"2025","statement_type":"ratio","standard_item_code":"REVENUE_GROWTH","raw_item_name":"Revenue growth","item_value":8.0,"currency":"PCT","source_document_id":"0700.HK_2025_AR"}
+]

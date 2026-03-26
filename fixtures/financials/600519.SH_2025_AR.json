@@ -1,0 +1,10 @@
+[
+  {"company_id":"KWEICHOW_MOUTAI","report_period":"2025","statement_type":"income","standard_item_code":"REVENUE","raw_item_name":"营业收入","item_value":174140000000.0,"currency":"CNY","source_document_id":"600519.SH_2025_AR"},
+  {"company_id":"KWEICHOW_MOUTAI","report_period":"2025","statement_type":"income","standard_item_code":"NP_PARENT","raw_item_name":"归属于上市公司股东的净利润","item_value":89230000000.0,"currency":"CNY","source_document_id":"600519.SH_2025_AR"},
+  {"company_id":"KWEICHOW_MOUTAI","report_period":"2025","statement_type":"cashflow","standard_item_code":"OCF_NET","raw_item_name":"经营活动产生的现金流量净额","item_value":93000000000.0,"currency":"CNY","source_document_id":"600519.SH_2025_AR"},
+  {"company_id":"KWEICHOW_MOUTAI","report_period":"2025","statement_type":"cashflow","standard_item_code":"FCF","raw_item_name":"自由现金流","item_value":88000000000.0,"currency":"CNY","source_document_id":"600519.SH_2025_AR"},
+  {"company_id":"KWEICHOW_MOUTAI","report_period":"2025","statement_type":"ratio","standard_item_code":"GROSS_MARGIN","raw_item_name":"毛利率","item_value":91.2,"currency":"PCT","source_document_id":"600519.SH_2025_AR"},
+  {"company_id":"KWEICHOW_MOUTAI","report_period":"2025","statement_type":"ratio","standard_item_code":"ASSET_LIAB_RATIO","raw_item_name":"资产负债率","item_value":21.5,"currency":"PCT","source_document_id":"600519.SH_2025_AR"},
+  {"company_id":"KWEICHOW_MOUTAI","report_period":"2025","statement_type":"ratio","standard_item_code":"ROE","raw_item_name":"ROE","item_value":34.6,"currency":"PCT","source_document_id":"600519.SH_2025_AR"},
+  {"company_id":"KWEICHOW_MOUTAI","report_period":"2025","statement_type":"ratio","standard_item_code":"REVENUE_GROWTH","raw_item_name":"收入增长率","item_value":15.0,"currency":"PCT","source_document_id":"600519.SH_2025_AR"}
+]

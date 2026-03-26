@@ -1,0 +1,17 @@
+{
+  "extracted_fields": [
+    {"name": "营业总收入", "value": 1506.0, "unit": "CNY_100M", "source_text": "营业总收入 1506.0 亿元", "page": 12},
+    {"name": "归母净利润", "value": 747.0, "unit": "CNY_100M", "source_text": "归母净利润 747.0 亿元", "page": 12},
+    {"name": "经营活动现金流量净额", "value": 665.0, "unit": "CNY_100M", "source_text": "经营活动现金流量净额 665.0 亿元", "page": 13},
+    {"name": "净资产收益率", "value": 34.2, "unit": "pct", "source_text": "净资产收益率 34.2%", "page": 8},
+    {"name": "毛利率", "value": 91.5, "unit": "pct", "source_text": "毛利率 91.5%", "page": 22},
+    {"name": "资产负债率", "value": 21.4, "unit": "pct", "source_text": "资产负债率 21.4%", "page": 23},
+    {"name": "营收增长率", "value": 18.0, "unit": "pct", "source_text": "营收增长率 18.0%", "page": 7},
+    {"name": "净利润增长率", "value": 19.2, "unit": "pct", "source_text": "净利润增长率 19.2%", "page": 7}
+  ],
+  "chunks": [
+    "贵州茅台 2023 年年度报告摘要，公司持续推进渠道、产品结构和国际化。",
+    "主要财务指标包括营业总收入、归母净利润、经营现金流以及盈利能力指标。",
+    "该文档由 mock PaddleOCR 适配器返回，用于验证本地管线和接口联调。"
+  ]
+}

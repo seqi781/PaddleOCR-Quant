@@ -1,0 +1,10 @@
+[
+  {"company_id":"APPLE","report_period":"2025","statement_type":"income","standard_item_code":"REVENUE","raw_item_name":"Net sales","item_value":420300000000.0,"currency":"USD","source_document_id":"AAPL_2025_10K"},
+  {"company_id":"APPLE","report_period":"2025","statement_type":"income","standard_item_code":"NET_PROFIT","raw_item_name":"Net income","item_value":108700000000.0,"currency":"USD","source_document_id":"AAPL_2025_10K"},
+  {"company_id":"APPLE","report_period":"2025","statement_type":"cashflow","standard_item_code":"OCF_NET","raw_item_name":"cash generated from operations","item_value":126500000000.0,"currency":"USD","source_document_id":"AAPL_2025_10K"},
+  {"company_id":"APPLE","report_period":"2025","statement_type":"cashflow","standard_item_code":"FCF","raw_item_name":"free cash flow","item_value":99800000000.0,"currency":"USD","source_document_id":"AAPL_2025_10K"},
+  {"company_id":"APPLE","report_period":"2025","statement_type":"ratio","standard_item_code":"GROSS_MARGIN","raw_item_name":"gross margin","item_value":46.4,"currency":"PCT","source_document_id":"AAPL_2025_10K"},
+  {"company_id":"APPLE","report_period":"2025","statement_type":"ratio","standard_item_code":"ASSET_LIAB_RATIO","raw_item_name":"liability to asset ratio","item_value":73.0,"currency":"PCT","source_document_id":"AAPL_2025_10K"},
+  {"company_id":"APPLE","report_period":"2025","statement_type":"ratio","standard_item_code":"ROE","raw_item_name":"return on equity","item_value":129.0,"currency":"PCT","source_document_id":"AAPL_2025_10K"},
+  {"company_id":"APPLE","report_period":"2025","statement_type":"ratio","standard_item_code":"REVENUE_GROWTH","raw_item_name":"Revenue growth","item_value":6.0,"currency":"PCT","source_document_id":"AAPL_2025_10K"}
+]

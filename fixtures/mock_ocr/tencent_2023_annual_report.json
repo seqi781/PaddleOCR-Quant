@@ -1,0 +1,17 @@
+{
+  "extracted_fields": [
+    {"name": "Revenue", "value": 609.0, "unit": "CNY_10B", "source_text": "Revenue 609.0 billion", "page": 15},
+    {"name": "Net Profit", "value": 157.0, "unit": "CNY_10B", "source_text": "Net Profit 157.0 billion", "page": 15},
+    {"name": "Operating Cash Flow", "value": 246.0, "unit": "CNY_10B", "source_text": "Operating Cash Flow 246.0 billion", "page": 16},
+    {"name": "ROE", "value": 20.9, "unit": "pct", "source_text": "ROE 20.9%", "page": 19},
+    {"name": "Gross Margin", "value": 48.2, "unit": "pct", "source_text": "Gross Margin 48.2%", "page": 20},
+    {"name": "Debt Ratio", "value": 43.1, "unit": "pct", "source_text": "Debt Ratio 43.1%", "page": 21},
+    {"name": "Revenue Growth", "value": 10.1, "unit": "pct", "source_text": "Revenue Growth 10.1%", "page": 10},
+    {"name": "Net Profit Growth", "value": 36.0, "unit": "pct", "source_text": "Net Profit Growth 36.0%", "page": 10}
+  ],
+  "chunks": [
+    "Tencent 2023 annual report extract for local parser simulation.",
+    "The fixture mixes English aliases to validate normalization for HK issuers.",
+    "Future versions can replace this with real OCR and table reconstruction."
+  ]
+}

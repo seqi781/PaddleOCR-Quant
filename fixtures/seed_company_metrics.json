@@ -1,0 +1,53 @@
+[
+  {
+    "company_code": "600519.SH",
+    "company_name": "贵州茅台",
+    "market": "CN_A",
+    "fiscal_year": 2023,
+    "currency": "CNY",
+    "normalized_fields": [
+      {"canonical_code": "revenue", "label_zh": "营业总收入", "label_en": "Revenue", "value": 1506.0, "unit": "CNY_100M", "source_name": "营业总收入"},
+      {"canonical_code": "net_profit", "label_zh": "归母净利润", "label_en": "Net Profit", "value": 747.0, "unit": "CNY_100M", "source_name": "归母净利润"},
+      {"canonical_code": "operating_cashflow", "label_zh": "经营现金流净额", "label_en": "Operating Cash Flow", "value": 665.0, "unit": "CNY_100M", "source_name": "经营活动现金流量净额"},
+      {"canonical_code": "roe", "label_zh": "净资产收益率", "label_en": "ROE", "value": 34.2, "unit": "pct", "source_name": "净资产收益率"},
+      {"canonical_code": "gross_margin", "label_zh": "毛利率", "label_en": "Gross Margin", "value": 91.5, "unit": "pct", "source_name": "毛利率"},
+      {"canonical_code": "debt_ratio", "label_zh": "资产负债率", "label_en": "Debt Ratio", "value": 21.4, "unit": "pct", "source_name": "资产负债率"},
+      {"canonical_code": "revenue_growth", "label_zh": "营收增长率", "label_en": "Revenue Growth", "value": 18.0, "unit": "pct", "source_name": "营收增长率"},
+      {"canonical_code": "profit_growth", "label_zh": "净利润增长率", "label_en": "Net Profit Growth", "value": 19.2, "unit": "pct", "source_name": "净利润增长率"}
+    ]
+  },
+  {
+    "company_code": "0700.HK",
+    "company_name": "Tencent",
+    "market": "HK",
+    "fiscal_year": 2023,
+    "currency": "CNY",
+    "normalized_fields": [
+      {"canonical_code": "revenue", "label_zh": "营业总收入", "label_en": "Revenue", "value": 609.0, "unit": "CNY_10B", "source_name": "Revenue"},
+      {"canonical_code": "net_profit", "label_zh": "归母净利润", "label_en": "Net Profit", "value": 157.0, "unit": "CNY_10B", "source_name": "Net Profit"},
+      {"canonical_code": "operating_cashflow", "label_zh": "经营现金流净额", "label_en": "Operating Cash Flow", "value": 246.0, "unit": "CNY_10B", "source_name": "Operating Cash Flow"},
+      {"canonical_code": "roe", "label_zh": "净资产收益率", "label_en": "ROE", "value": 20.9, "unit": "pct", "source_name": "ROE"},
+      {"canonical_code": "gross_margin", "label_zh": "毛利率", "label_en": "Gross Margin", "value": 48.2, "unit": "pct", "source_name": "Gross Margin"},
+      {"canonical_code": "debt_ratio", "label_zh": "资产负债率", "label_en": "Debt Ratio", "value": 43.1, "unit": "pct", "source_name": "Debt Ratio"},
+      {"canonical_code": "revenue_growth", "label_zh": "营收增长率", "label_en": "Revenue Growth", "value": 10.1, "unit": "pct", "source_name": "Revenue Growth"},
+      {"canonical_code": "profit_growth", "label_zh": "净利润增长率", "label_en": "Net Profit Growth", "value": 36.0, "unit": "pct", "source_name": "Net Profit Growth"}
+    ]
+  },
+  {
+    "company_code": "AAPL",
+    "company_name": "Apple",
+    "market": "US",
+    "fiscal_year": 2023,
+    "currency": "USD",
+    "normalized_fields": [
+      {"canonical_code": "revenue", "label_zh": "营业总收入", "label_en": "Revenue", "value": 383.3, "unit": "USD_B", "source_name": "Revenue"},
+      {"canonical_code": "net_profit", "label_zh": "归母净利润", "label_en": "Net Profit", "value": 97.0, "unit": "USD_B", "source_name": "Net Income"},
+      {"canonical_code": "operating_cashflow", "label_zh": "经营现金流净额", "label_en": "Operating Cash Flow", "value": 110.5, "unit": "USD_B", "source_name": "Operating Cash Flow"},
+      {"canonical_code": "roe", "label_zh": "净资产收益率", "label_en": "ROE", "value": 156.1, "unit": "pct", "source_name": "ROE"},
+      {"canonical_code": "gross_margin", "label_zh": "毛利率", "label_en": "Gross Margin", "value": 44.1, "unit": "pct", "source_name": "Gross Margin"},
+      {"canonical_code": "debt_ratio", "label_zh": "资产负债率", "label_en": "Debt Ratio", "value": 82.4, "unit": "pct", "source_name": "Debt Ratio"},
+      {"canonical_code": "revenue_growth", "label_zh": "营收增长率", "label_en": "Revenue Growth", "value": -2.8, "unit": "pct", "source_name": "Revenue Growth"},
+      {"canonical_code": "profit_growth", "label_zh": "净利润增长率", "label_en": "Net Profit Growth", "value": -2.8, "unit": "pct", "source_name": "Net Profit Growth"}
+    ]
+  }
+]

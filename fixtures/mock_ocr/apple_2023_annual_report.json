@@ -1,0 +1,17 @@
+{
+  "extracted_fields": [
+    {"name": "Revenue", "value": 383.3, "unit": "USD_B", "source_text": "Revenue 383.3 billion", "page": 18},
+    {"name": "Net Income", "value": 97.0, "unit": "USD_B", "source_text": "Net Income 97.0 billion", "page": 18},
+    {"name": "Operating Cash Flow", "value": 110.5, "unit": "USD_B", "source_text": "Operating Cash Flow 110.5 billion", "page": 22},
+    {"name": "ROE", "value": 156.1, "unit": "pct", "source_text": "ROE 156.1%", "page": 34},
+    {"name": "Gross Margin", "value": 44.1, "unit": "pct", "source_text": "Gross Margin 44.1%", "page": 23},
+    {"name": "Debt Ratio", "value": 82.4, "unit": "pct", "source_text": "Debt Ratio 82.4%", "page": 24},
+    {"name": "Revenue Growth", "value": -2.8, "unit": "pct", "source_text": "Revenue Growth -2.8%", "page": 11},
+    {"name": "Net Profit Growth", "value": -2.8, "unit": "pct", "source_text": "Net Profit Growth -2.8%", "page": 11}
+  ],
+  "chunks": [
+    "Apple FY2023 report snippet for US-market extensibility validation.",
+    "This fixture keeps the same schema as CN_A and HK fixtures.",
+    "MVP only demonstrates local parsing and scoring, not SEC ingestion."
+  ]
+}
