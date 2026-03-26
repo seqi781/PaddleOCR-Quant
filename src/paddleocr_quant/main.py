@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+from datetime import datetime
+
 from fastapi import Depends, FastAPI, HTTPException
 
 from paddleocr_quant.bootstrap import Container, build_container
+from paddleocr_quant.ingestion import build_document_metadata
 from paddleocr_quant.models import (
     CompareRequest,
     CompareResult,
@@ -10,10 +13,15 @@ from paddleocr_quant.models import (
     DocumentMetadata,
     DocumentMetadataIn,
     ParseResult,
+    QARequest,
+    QAResponse,
+    SampleFiling,
+    SearchResult,
     ScoreBreakdown,
     ScoreRequest,
 )
 from paddleocr_quant.normalization import normalize_fields
+from paddleocr_quant.retrieval import build_grounded_answer, query_from_question
 from paddleocr_quant.scoring import score_company
 from paddleocr_quant.seeds import seed_repository
 from paddleocr_quant.settings import Settings, get_settings
@@ -46,7 +54,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         payload: DocumentMetadataIn,
         dep: Container = Depends(get_container),
     ) -> DocumentMetadata:
-        metadata = DocumentMetadata(**payload.model_dump())
+        try:
+            metadata = build_document_metadata(payload, dep.object_store)
+        except (FileNotFoundError, ValueError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
         dep.repo.insert_document(metadata)
         dep.object_store.put_json(
             f"documents/{metadata.document_id}.json",
@@ -59,7 +70,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         metadata = dep.repo.get_document(document_id)
         if not metadata:
             raise HTTPException(status_code=404, detail="Document not found")
-        result = dep.parser.parse(metadata)
+        parser = dep.parser_registry.select(metadata)
+        result = parser.parse(metadata)
+        parsed_at = datetime.utcnow().isoformat()
+        dep.repo.upsert_parse_result(result)
+        dep.repo.update_document_parse_status(document_id, parser.name, parsed_at)
         dep.object_store.put_json(
             f"parsed/{document_id}.json",
             result.model_dump(mode="json"),
@@ -75,6 +90,41 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         )
         dep.repo.upsert_company_metric(record)
         return result
+
+    @app.get("/documents/{document_id}/search", response_model=SearchResult)
+    def search_document(
+        document_id: str,
+        q: str,
+        limit: int = 5,
+        dep: Container = Depends(get_container),
+    ) -> SearchResult:
+        metadata = dep.repo.get_document(document_id)
+        if not metadata:
+            raise HTTPException(status_code=404, detail="Document not found")
+        return dep.repo.search_chunks(document_id=document_id, query=q, limit=limit)
+
+    @app.post("/documents/{document_id}/qa", response_model=QAResponse)
+    def answer_question(
+        document_id: str,
+        payload: QARequest,
+        dep: Container = Depends(get_container),
+    ) -> QAResponse:
+        metadata = dep.repo.get_document(document_id)
+        if not metadata:
+            raise HTTPException(status_code=404, detail="Document not found")
+        query = query_from_question(payload.question)
+        search_result = dep.repo.search_chunks(document_id=document_id, query=query, limit=payload.top_k)
+        return build_grounded_answer(document_id=document_id, question=payload.question, search_result=search_result)
+
+    @app.get("/filings/sample", response_model=list[SampleFiling])
+    def list_sample_filings(
+        market: str,
+        ticker: str = "",
+        dep: Container = Depends(get_container),
+    ) -> list[SampleFiling]:
+        if market not in {"CN_A", "HK", "US"}:
+            raise HTTPException(status_code=400, detail="Unsupported market")
+        return dep.filing_sources.list_sample_filings(market=market, ticker=ticker)
 
     @app.post("/scores/company", response_model=ScoreBreakdown)
     def score_company_endpoint(

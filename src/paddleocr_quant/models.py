@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 
 
 MarketCode = Literal["CN_A", "HK", "US"]
+SourceType = Literal["fixture", "local"]
 
 
 class DocumentMetadataIn(BaseModel):
@@ -17,17 +18,25 @@ class DocumentMetadataIn(BaseModel):
     fiscal_year: int
     report_type: str = "annual_report"
     language: str = "zh-CN"
-    source_fixture: str = Field(
+    source_fixture: str | None = Field(
         default="moutai_2023_annual_report.json",
         description="Fixture filename used by the mock parser.",
     )
     source_path: str | None = None
+    parser_hint: str | None = None
     tags: list[str] = Field(default_factory=list)
 
 
 class DocumentMetadata(DocumentMetadataIn):
     document_id: str = Field(default_factory=lambda: f"doc-{uuid4().hex[:12]}")
     created_at: datetime = Field(default_factory=datetime.utcnow)
+    source_type: SourceType = "fixture"
+    file_hash: str | None = None
+    stored_path: str | None = None
+    detected_extension: str | None = None
+    mime_type: str | None = None
+    parser_name: str | None = None
+    parsed_at: datetime | None = None
 
 
 class ParsedField(BaseModel):
@@ -44,6 +53,7 @@ class TextChunk(BaseModel):
     document_id: str
     seq: int
     text: str
+    score: float = 0.0
     embedding_status: str = "pending"
     metadata: dict[str, Any] = Field(default_factory=dict)
 
@@ -51,8 +61,10 @@ class TextChunk(BaseModel):
 class ParseResult(BaseModel):
     document_id: str
     parser_name: str
+    extracted_text: str = ""
     extracted_fields: list[ParsedField]
     chunks: list[TextChunk]
+    warnings: list[str] = Field(default_factory=list)
 
 
 class NormalizedField(BaseModel):
@@ -98,3 +110,38 @@ class CompareRequest(BaseModel):
 class CompareResult(BaseModel):
     fiscal_year: int
     scores: list[dict[str, Any]]
+
+
+class SearchResult(BaseModel):
+    document_id: str
+    query: str
+    total_hits: int
+    chunks: list[TextChunk]
+
+
+class QARequest(BaseModel):
+    question: str
+    top_k: int = 3
+
+
+class Citation(BaseModel):
+    chunk_id: str
+    seq: int
+    snippet: str
+
+
+class QAResponse(BaseModel):
+    document_id: str
+    question: str
+    answer: str
+    citations: list[Citation]
+
+
+class SampleFiling(BaseModel):
+    market: MarketCode
+    ticker: str
+    title: str
+    report_type: str
+    filing_date: str
+    source_url: str
+    local_fixture: str

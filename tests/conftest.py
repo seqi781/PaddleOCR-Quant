@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from fastapi.testclient import TestClient
 
 from paddleocr_quant.main import create_app
 from paddleocr_quant.settings import Settings
@@ -18,3 +19,8 @@ def test_app(tmp_path: Path):
     )
     app = create_app(settings)
     return app
+
+
+@pytest.fixture()
+def client(test_app):
+    return TestClient(test_app)

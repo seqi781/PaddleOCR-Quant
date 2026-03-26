@@ -28,6 +28,7 @@ dev = [
 
 [project.scripts]
 poq = "paddleocr_quant.cli:app"
+paddleocr-quant = "paddleocr_quant.cli:app"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/paddleocr_quant"]

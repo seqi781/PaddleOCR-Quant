@@ -1,92 +1,89 @@
-# 架构说明：本地 MVP 如何映射到大数据版方案
+# 架构说明
 
-## 1. 当前仓库的定位
+## 定位
 
-这个仓库实现的是一个**本地可运行 MVP**，目标不是一次性落地完整的大数据平台，而是先确定以下边界：
+PaddleOCR-Quant 当前是一个单机、本地、轻量 MVP。目标不是一次性实现完整大数据平台，而是把下面这些稳定边界先落地：
 
-- 文档元数据模型
-- 文档解析接口
-- 财务标准化协议
-- 因子评分接口
-- API / CLI 服务入口
+- 文档接入与元数据
+- 解析器接口与选择逻辑
+- 财务字段标准化
+- 本地检索与 grounded QA
+- 因子评分
+- API / CLI 服务边界
 
-当前实现适合：
-- 快速验证方案可行性
-- 作为真实 PaddleOCR 接入前的骨架
-- 作为未来微服务拆分的原型
+## 当前实现
 
-## 2. 当前实现与大数据目标的映射
+### 接入层
 
-| 大数据方案层 | 目标技术 | 当前 MVP 对应实现 | 说明 |
-|---|---|---|---|
-| 采集与下载层 | Scrapy / Playwright / Airflow | fixtures + ingest API | 先用静态样例模拟文档接入 |
-| 消息总线 | Kafka / Pulsar | 未实现 | 未来用于 `document_ingested` 等事件 |
-| 原始数据湖 | MinIO / S3 / Iceberg | LocalObjectStorage | 当前仅做本地文件抽象 |
-| OCR 解析层 | PaddleOCR GPU 集群 | MockPaddleOCRParser | 未来替换为真实 OCR 服务 |
-| 元数据管理 | PostgreSQL | SQLite(SQLModel) | MVP 使用本地单文件数据库 |
-| 标准化计算层 | Spark / Flink / Python ETL | service.py + normalizer.py + scoring.py | 当前为单机同步执行 |
-| 指标分析层 | ClickHouse | API 内存排序 | 未来替换为分析型数据库 |
-| 检索层 | Elasticsearch / Milvus / pgvector | TextChunk 占位模型 | 为未来向量检索预留 |
-| 智能体层 | FastAPI + OpenClaw | FastAPI + CLI | 后续可被 OpenClaw Skill 调用 |
+- `POST /documents` 和 `paddleocr-quant ingest`
+- 支持 `pdf`、`txt`、`md`、`html`
+- 计算 SHA-256
+- 复制原文件到本地对象存储
 
-## 3. 为什么先做这种结构
+### 解析层
 
-因为真正的大数据系统要长期演进，如果没有清晰协议，后面越做越乱。MVP 先把最容易稳定的部分定下来：
+- `MockPaddleOCRParser`
+  - 读取 `fixtures/mock_ocr/*.json`
+- `TextDocumentParser`
+  - 解析 `txt/md/html`
+  - 提取纯文本与简单财务别名
+- `PDFDocumentParser`
+  - 有 `pypdf` 时尝试抽取文本
+  - 无依赖时降级返回 warning
 
-1. **文档对象长什么样**
-2. **解析结果怎么输出**
-3. **财务字段怎么标准化**
-4. **评分层拿什么输入、给什么输出**
-5. **外部系统如何调用服务**
+### 存储层
 
-一旦这些边界稳定：
-- 真实 OCR 可以替换 mock 解析器
-- 本地 SQLite 可以升级到 PostgreSQL / ClickHouse
-- 同步 API 可以升级成 Kafka 驱动异步流水线
-- 本地 chunk 占位可以升级成向量数据库检索
+- SQLite
+  - `documents`
+  - `parsed_documents`
+  - `document_chunks`
+  - `company_metrics`
+- 本地对象存储
+  - 原始文件
+  - 文档元数据 JSON
+  - 解析结果 JSON
 
-## 4. 下一步推荐演进顺序
+### 检索与问答层
 
-### 4.1 第一阶段：真实文档解析接入
-- 对接 PaddleOCR / PP-StructureV3
-- 新增 PDF 可提取性判断
-- 区分文本型 PDF 与扫描型 PDF
-- 输出页面级结构、表格、Markdown
+- chunk 持久化到 SQLite
+- 关键词匹配搜索
+- 基于 top chunks 的 grounded QA 模板回答
 
-### 4.2 第二阶段：采集模块接入
-- A 股：巨潮资讯 / 上交所
-- 港股：HKEXnews
-- 美股：SEC EDGAR
-- 文档下载后发出 `document_ingested` 事件
+### 市场源占位层
 
-### 4.3 第三阶段：存储与分析升级
-- 原始文件进 MinIO / S3
-- 结构化事实入 PostgreSQL / ClickHouse
-- 历史批量回刷用 Spark
-- 增量更新和订阅提醒用 Flink
+- `crawlers.py`
+  - CN/HK/US source interface
+  - 返回样例 filings stub 输出
 
-### 4.4 第四阶段：问答与智能编排
-- OpenClaw Skills：抓取财报、解析财报、评估公司、筛选股票
-- 向量检索：附注问答、风险段落定位
-- 规则触发：新年报入库后自动重算评分
+## 与原始大数据方案的映射
 
-## 5. OpenClaw 在未来架构中的角色
+| 目标层 | 生产化设想 | 当前本地实现 |
+|---|---|---|
+| 文档采集 | 交易所 crawler / 调度系统 | 本地文件 ingest + sample filing stubs |
+| 原始存储 | S3 / MinIO / 数据湖 | 本地目录对象存储 |
+| OCR / 解析 | PaddleOCR / PDF pipeline | mock parser + text parser + PDF fallback |
+| 元数据与事实 | PostgreSQL / OLAP | SQLite |
+| 检索 | FTS / ES / 向量库 | SQLite chunk records + 关键词匹配 |
+| 问答 | RAG + LLM | grounded response template |
+| 编排 | 事件驱动 / 工作流 | 同步 API / CLI |
 
-OpenClaw 不应该替代底层数据库或计算引擎，而应该作为：
+## 为什么先做这种形态
 
-- **流程编排层**：协调采集、解析、入库、评分
-- **研究问答层**：把自然语言问题转成 API / SQL / 检索动作
-- **自动化触发层**：新文件入库后自动跑解析和提醒
+因为对本项目最重要的是先把协议跑通，而不是先堆重型基础设施。当前形态的价值在于：
 
-在这个 MVP 中，FastAPI 已经提供了适合被 OpenClaw Skill 调用的服务边界。
+- 可以在本地快速演示
+- 可以稳定写测试
+- 可以明确后续替换点
+- 可以逐步升级成更真实的 parser / crawler / retrieval
 
-## 6. 总结
+## 明确未实现
 
-当前代码完成的不是“大数据全栈”，而是一个可靠的起点：
+下面这些仍然不在当前仓库里：
 
-- 能跑
-- 能测
-- 能解释
-- 能继续长大
+- Kafka / Spark / Flink / MinIO
+- 真实生产级公告抓取
+- 复杂版面分析、表格恢复、XBRL
+- 向量索引与 LLM 驱动问答
+- 任务调度、监控、重试、审计链路
 
-这比直接堆一堆重型基础设施更适合作为项目第一版。
+这些内容属于未来扩展，而不是当前本地 MVP 的运行前提。
